@@ -35,21 +35,65 @@ def Accuracy(y, yPredicted):
 
 def Precision(y, yPredicted):
     print("Stub precision in ", __file__)
+    TP = PP = 0
+    for i in range(len(y)):
+        if yPredicted[i]:
+            PP += 1
+            if y[i]:
+                TP += 1
+
+    return TP / PP
 
 def Recall(y, yPredicted):
     print("Stub Recall in ", __file__)
+    TP = AP = 0
+    for i in range(len(y)):
+        if y[i]:
+            AP += 1
+            if yPredicted[i]:
+                TP += 1
+
+    return TP / AP
 
 def FalseNegativeRate(y, yPredicted):
     print("Stub FalseNegativeRate in ", __file__)
+    FN = AP = 0
+    for i in range(len(y)):
+        if y[i]:
+            AP += 1
+            if not yPredicted[i]:
+                FN += 1
+
+    return FN / AP
 
 def FalsePositiveRate(y, yPredicted):
     print("Stub FalsePositiveRate in ", __file__)
+    FP = AN = 0
+    for i in range(len(y)):
+        if not y[i]:
+            AN += 1
+            if yPredicted[i]:
+                FP += 1
+
+    return FP / AN
 
 def ConfusionMatrix(y, yPredicted):
     # This function should return: [[<# True Negatives>, <# False Positives>], [<# False Negatives>, <# True Positives>]]
     #  Hint: writing this function first might make the others easier...
-    
+    TN = FP = FN = TP = 0
+    for i in range(len(y)):
+        if y[i]:
+            if yPredicted[i]:
+                TP += 1
+            else:
+                FN += 1
+        else:
+            if yPredicted[i]:
+                FP += 1
+            else:
+                TN += 1
     print("Stub preConfusionMatrix in ", __file__)
+    return [[TN, FP], [FN, TP]]
 
 def ExecuteAll(y, yPredicted):
     print(ConfusionMatrix(y, yPredicted))
