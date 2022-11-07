@@ -1,5 +1,8 @@
+import os
 
-kOutputDirectory = "C:\\temp\\visualize"
+kOutputDirectory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'visualize')
+if not os.path.exists(kOutputDirectory):
+    os.makedirs(kOutputDirectory)
 
 runUnitTest = True
 if runUnitTest:
@@ -30,7 +33,7 @@ if runUnitTest:
         visualization.Save()
         
 # Once your LogisticRegression learner seems to be working, set this flag to True and try it on the spam data
-runSMSSpam  = False
+runSMSSpam = True
 if runSMSSpam:
     import MachineLearningCourse.MLProjectSupport.SMSSpam.SMSSpamDataset as SMSSpamDataset
 
@@ -56,7 +59,7 @@ if runSMSSpam:
     print("Learning the logistic regression model:")
     import MachineLearningCourse.MLUtilities.Learners.LogisticRegression as LogisticRegression
     logisticRegressionModel = LogisticRegression.LogisticRegression()
-    
+
     logisticRegressionModel.fit(xTrain, yTrain, stepSize=1.0, convergence=0.005)
     
     #############################
@@ -68,11 +71,36 @@ if runSMSSpam:
     logisticRegressionModel.visualize()
     EvaluateBinaryClassification.ExecuteAll(yValidate, logisticRegressionModel.predict(xValidate, classificationThreshold=0.5))
 
+    convTune = {}
+    for convergence in [0.01, 0.001, 0.0001, 0.00001, 0.000001]:
+        logisticRegressionModel = LogisticRegression.LogisticRegression()
+        logisticRegressionModel.fit(xTrain, yTrain, stepSize=1.0, convergence=convergence)
+        yPredict = logisticRegressionModel.predict(xValidate, classificationThreshold=0.5)
+        convTune[convergence] = [logisticRegressionModel.totalGradientDescentSteps,
+                                 EvaluateBinaryClassification.Accuracy(yValidate, yPredict),
+                                 EvaluateBinaryClassification.Precision(yValidate, yPredict),
+                                 EvaluateBinaryClassification.Recall(yValidate, yPredict),
+                                 EvaluateBinaryClassification.FalsePositiveRate(yValidate, yPredict),
+                                 EvaluateBinaryClassification.FalseNegativeRate(yValidate, yPredict)]
+    print(convTune)
+
+    logisticRegressionModel = LogisticRegression.LogisticRegression(featureCount=len(xTrain[0]))
+    trainLosses, validationLosses, lossXLabels = [], [], []
+    while not logisticRegressionModel.converged:
+        # do 100 iterations of training
+        logisticRegressionModel.incrementalFit(xTrain, yTrain, maxSteps=100, stepSize=1.0, convergence=0.000001)
+        # then look at the models weights
+        logisticRegressionModel.visualize()
+        # then look at how training set loss is converging
+        trainLosses.append(logisticRegressionModel.loss(xTrain, yTrain))
+        validationLosses.append(logisticRegressionModel.loss(xValidate, yValidate))
+        lossXLabels.append(logisticRegressionModel.totalGradientDescentSteps)
+
     #################
     # You may find the following module helpful for making charts. You'll have to install matplotlib (see the lecture notes).
-    #
-    # import MachineLearningCourse.MLUtilities.Visualizations.Charting as Charting
-    # 
-    # # trainLosses, validationLosses, and lossXLabels are parallel arrays with the losses you want to plot at the specified x coordinates
-    #
-    # Charting.PlotSeries([trainLosses, validationLosses], ['Train', 'Validate'], lossXLabels, chartTitle="Logistic Regression", xAxisTitle="Gradient Descent Steps", yAxisTitle="Avg. Loss", outputDirectory=kOutputDirectory, fileName="3-Logistic Regression Train vs Validate loss")
+
+    import MachineLearningCourse.MLUtilities.Visualizations.Charting as Charting
+
+    # trainLosses, validationLosses, and lossXLabels are parallel arrays with the losses you want to plot at the specified x coordinates
+
+    Charting.PlotSeries([trainLosses, validationLosses], ['Train', 'Validate'], lossXLabels, chartTitle="Logistic Regression", xAxisTitle="Gradient Descent Steps", yAxisTitle="Avg. Loss", outputDirectory=kOutputDirectory, fileName="3-Logistic Regression Train vs Validate loss")
