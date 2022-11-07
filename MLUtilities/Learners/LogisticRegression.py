@@ -1,5 +1,6 @@
 import time
 import math
+import numpy as np
 import MachineLearningCourse.MLUtilities.Evaluations.EvaluateBinaryProbabilityEstimate as EvaluateBinaryProbabilityEstimate
 
 
@@ -35,15 +36,27 @@ class LogisticRegression(object):
         # For each sample do the dot product between features and weights (remember the bias weight, weight0)
         #  pass the results through the sigmoid function to convert to probabilities.
         
-        print("Stub predictProbabilities in ", __file__)
+        # print("Stub predictProbabilities in ", __file__)
+        x = np.hstack([np.ones([len(x), 1]), np.array(x)])
+        w = np.array([self.weight0] + self.weights)
+        return 1 / (1 + np.exp(-np.dot(x, w)))
         
     def predict(self, x, classificationThreshold = 0.5):
-        print("Stub predict in ", __file__)
+        # print("Stub predict in ", __file__)
+        return [1 if yHat > classificationThreshold else 0 for yHat in self.predictProbabilities(x)]
         
     def __gradientDescentStep(self, x, y, stepSize):
         self.totalGradientDescentSteps = self.totalGradientDescentSteps + 1
         
-        print("Stub gradientDescentStep in ", __file__)
+        # print("Stub gradientDescentStep in ", __file__)
+        w = np.array([self.weight0] + self.weights)
+        x = np.hstack([np.ones([len(x), 1]), np.array(x)])
+        y = np.array(y)
+        yHat = 1 / (1 + np.exp(-np.dot(x, w)))
+        gradient = np.dot(x.T, (yHat - y)) / len(y)
+        w -= stepSize * gradient
+        self.weight0 = w[0]
+        self.weights = list(w[1:])
 
     # Allows you to partially fit, then pause to gather statistics / output intermediate information, then continue fitting
     def incrementalFit(self, x, y, maxSteps=1, stepSize=1.0, convergence=0.005):
@@ -54,7 +67,14 @@ class LogisticRegression(object):
         # do a maximum of 'maxSteps' of gradient descent with the indicated stepSize (use the __gradientDescentStep stub function for code clarity).
         #  stop and set self.converged to true if the mean log loss on the training set decreases by less than 'convergence' on a gradient descent step.
         
-        print("Stub incrementalFit in ", __file__)
+        # print("Stub incrementalFit in ", __file__)
+        logloss = self.loss(x, y)
+        for i in range(maxSteps):
+            self.__gradientDescentStep(x, y, stepSize)
+            if 0 <= logloss - self.loss(x, y) < convergence:
+                self.converged = True
+                break
+            logloss = self.loss(x, y)
 
     def fit(self, x, y, maxSteps=50000, stepSize=1.0, convergence=0.005, verbose = True):
         

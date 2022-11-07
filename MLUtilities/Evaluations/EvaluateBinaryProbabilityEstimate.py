@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 def __CheckEvaluationInput(y, yPredicted):
     # Check sizes
@@ -25,5 +26,8 @@ def MeanSquaredErrorLoss(y, yPredicted):
 def LogLoss(y, yPredicted):
     __CheckEvaluationInput(y, yPredicted)
 
-    print("Stub LogLoss in ", __file__)
+    # print("Stub LogLoss in ", __file__)
+    y = np.array(y)
+    logloss = - np.mean((y * np.log(yPredicted) + (1 - y) * np.log(1 - yPredicted)))
+    return logloss
 
