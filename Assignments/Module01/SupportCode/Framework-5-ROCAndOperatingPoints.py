@@ -1,4 +1,6 @@
-kOutputDirectory = "C:\\temp\\visualize"
+import os
+
+kOutputDirectory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'visualize')
 
 import MachineLearningCourse.MLProjectSupport.SMSSpam.SMSSpamDataset as SMSSpamDataset
 
@@ -71,5 +73,37 @@ model.fit(xTrain,yTrain,convergence=convergence, stepSize=stepSize)
 seriesFPRs.append(modelFPRs)
 seriesFNRs.append(modelFNRs)
 seriesLabels.append('25 Mutual Information')
+
+#### Learn a model with 150 frequent features
+featurizer = SMSSpamFeaturize.SMSSpamFeaturize(useHandCraftedFeatures=False)
+featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords = 150)
+
+xTrain      = featurizer.Featurize(xTrainRaw)
+xValidate   = featurizer.Featurize(xValidateRaw)
+xTest       = featurizer.Featurize(xTestRaw)
+
+model = LogisticRegression.LogisticRegression()
+model.fit(xTrain,yTrain,convergence=convergence, stepSize=stepSize)
+
+(modelFPRs, modelFNRs, thresholds) = TabulateModelPerformanceForROC(model, xValidate, yValidate)
+seriesFPRs.append(modelFPRs)
+seriesFNRs.append(modelFNRs)
+seriesLabels.append('150 Frequent')
+
+#### Learn a model with 150 features by mutual information
+featurizer = SMSSpamFeaturize.SMSSpamFeaturize(useHandCraftedFeatures=False)
+featurizer.CreateVocabulary(xTrainRaw, yTrain, numMutualInformationWords = 150)
+
+xTrain      = featurizer.Featurize(xTrainRaw)
+xValidate   = featurizer.Featurize(xValidateRaw)
+xTest       = featurizer.Featurize(xTestRaw)
+
+model = LogisticRegression.LogisticRegression()
+model.fit(xTrain,yTrain,convergence=convergence, stepSize=stepSize)
+
+(modelFPRs, modelFNRs, thresholds) = TabulateModelPerformanceForROC(model, xValidate, yValidate)
+seriesFPRs.append(modelFPRs)
+seriesFNRs.append(modelFNRs)
+seriesLabels.append('150 Mutual Information')
 
 Charting.PlotROCs(seriesFPRs, seriesFNRs, seriesLabels, useLines=True, chartTitle="ROC Comparison", xAxisTitle="False Negative Rate", yAxisTitle="False Positive Rate", outputDirectory=kOutputDirectory, fileName="Plot-SMSSpamROCs")
