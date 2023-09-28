@@ -11,5 +11,8 @@ def GetAccuracyBounds(mean, sampleSize, confidence):
 
     print("Stub GetAccuracyBounds in ", __file__)
 
+    lower = mean - _zValues[confidence] * (mean * (1 - mean) / sampleSize) ** 0.5
+    upper = mean + _zValues[confidence] * (mean * (1 - mean) / sampleSize) ** 0.5
+
     return (lower, upper)
     
