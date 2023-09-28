@@ -39,9 +39,17 @@ if doModelEvaluation:
         print(" %.2f%% accuracy bound: %.4f - %.4f" % (confidence, lowerBound, upperBound))
 
     ### Compare to most common class model here...
+    mccm = MostCommonClassModel.MostCommonClassModel()
+    mccm.fit(xTrainRaw, yTrain)
+    print("Most common class model:")
+    validationSetAccuracy = EvaluateBinaryClassification.Accuracy(yValidate, mccm.predict(xValidateRaw))
+    print("Validation set accuracy: %.4f." % (validationSetAccuracy))
+    for confidence in [.5, .8, .9, .95, .99]:
+        (lowerBound, upperBound) = ErrorBounds.GetAccuracyBounds(validationSetAccuracy, len(xValidateRaw), confidence)
+        print(" %.2f%% accuracy bound: %.4f - %.4f" % (confidence, lowerBound, upperBound))
 
 # Set this to true when you've completed the previous steps and are ready to move on...
-doCrossValidation = False
+doCrossValidation = True
 if doCrossValidation:
     import MachineLearningCourse.MLUtilities.Data.CrossValidation as CrossValidation    
     numberOfFolds = 5
@@ -49,3 +57,28 @@ if doCrossValidation:
     import MachineLearningCourse.MLUtilities.Evaluations.ErrorBounds as ErrorBounds
     
     # Good luck!
+    lrAccuracy = 0
+    mcAccuracy = 0
+    for i in range(numberOfFolds):
+        xTrainRawCV, yTrainCV, xEvaluateRawCV, yEvaluateCV = CrossValidation.CrossValidation(xTrainRaw, yTrain, numberOfFolds, i)
+
+        featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
+        featurizer.CreateVocabulary(xTrainRawCV, yTrainCV, numMutualInformationWords=25)
+        xTrainCV = featurizer.Featurize(xTrainRawCV)
+        xValidateCV = featurizer.Featurize(xEvaluateRawCV)
+        frequentModel = LogisticRegression.LogisticRegression()
+        frequentModel.fit(xTrainCV, yTrainCV, convergence=convergence, stepSize=stepSize, verbose=True)
+        lrAccuracy += EvaluateBinaryClassification.Accuracy(yEvaluateCV, frequentModel.predict(xValidateCV))
+
+        mccm = MostCommonClassModel.MostCommonClassModel()
+        mccm.fit(xTrainRawCV, yTrainCV)
+        mcAccuracy += EvaluateBinaryClassification.Accuracy(yEvaluateCV, mccm.predict(xEvaluateRawCV))
+    lrAccuracy /= numberOfFolds
+    mcAccuracy /= numberOfFolds
+    print("Validation set accuracy - logistic regression: %.4f." % (lrAccuracy))
+    print("Validation set accuracy - most common: %.4f." % (mcAccuracy))
+    for confidence in [.5, .8, .9, .95, .99]:
+        (lowerBound, upperBound) = ErrorBounds.GetAccuracyBounds(lrAccuracy, len(xTrainRaw), confidence)
+        print(" %.2f%% accuracy bound - logistic regression: %.4f - %.4f" % (confidence, lowerBound, upperBound))
+        (lowerBound, upperBound) = ErrorBounds.GetAccuracyBounds(mcAccuracy, len(xTrainRaw), confidence)
+        print(" %.2f%% accuracy bound - most common: %.4f - %.4f" % (confidence, lowerBound, upperBound))
