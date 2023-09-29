@@ -1,4 +1,6 @@
-kOutputDirectory = "C:\\temp\\visualize"
+import os
+
+kOutputDirectory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'visualize')
 
 import MachineLearningCourse.MLProjectSupport.SMSSpam.SMSSpamDataset as SMSSpamDataset
 
@@ -46,21 +48,27 @@ def ExecuteEvaluationRun(runSpecification, xTrainRaw, yTrain, numberOfFolds = 5)
     startTime = time.time()
     
     # HERE upgrade this to use crossvalidation
-    
-    featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
-    featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords = runSpecification['numFrequentWords'], numMutualInformationWords = runSpecification['numMutualInformationWords'])
+    validationSetAccuracy = 0
+    for i in range(numberOfFolds):
+        xTrainRawCV, yTrainCV, xEvaluateRawCV, yEvaluateCV = CrossValidation.CrossValidation(xTrainRaw, yTrain,
+                                                                                             numberOfFolds, i)
 
-    xTrain      = featurizer.Featurize(xTrainRaw)
-    xValidate   = featurizer.Featurize(xValidateRaw)
-
-    model = LogisticRegression.LogisticRegression()
-    model.fit(xTrain,yTrain,convergence=runSpecification['convergence'], stepSize=runSpecification['stepSize'], verbose=True)
-    
-    validationSetAccuracy = EvaluateBinaryClassification.Accuracy(yValidate, model.predict(xValidate))
-    
+        featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
+        featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords=runSpecification['numFrequentWords'],
+                                    numMutualInformationWords=runSpecification['numMutualInformationWords'])
+        xTrainCV = featurizer.Featurize(xTrainRawCV)
+        xValidateCV = featurizer.Featurize(xEvaluateRawCV)
+        model = LogisticRegression.LogisticRegression()
+        model.fit(xTrainCV, yTrainCV, convergence=runSpecification['convergence'],
+                  stepSize=runSpecification['stepSize'], verbose=True)
+        validationSetAccuracy += EvaluateBinaryClassification.Accuracy(yEvaluateCV, model.predict(xValidateCV))
+    validationSetAccuracy /= numberOfFolds
     runSpecification['accuracy'] = validationSetAccuracy
 
     # HERE upgrade this to calculate and save some error bounds...
+    (lowerBound, upperBound) = ErrorBounds.GetAccuracyBounds(validationSetAccuracy, len(xTrainRaw), 0.5)
+    runSpecification['lowerBound'] = lowerBound
+    runSpecification['upperBound'] = upperBound
     
     endTime = time.time()
     runSpecification['runtime'] = endTime - startTime
@@ -68,7 +76,7 @@ def ExecuteEvaluationRun(runSpecification, xTrainRaw, yTrain, numberOfFolds = 5)
     return runSpecification
 
 evaluationRunSpecifications = []
-for numMutualInformationWords in [10, 25, 50, 75, 100]:
+for numMutualInformationWords in [20, 40, 60, 80, 100, 120]:
 
     runSpecification = {}
     runSpecification['optimizing'] = 'numMutualInformationWords'
@@ -80,12 +88,36 @@ for numMutualInformationWords in [10, 25, 50, 75, 100]:
     evaluationRunSpecifications.append(runSpecification)
 
 ## if you want to run in parallel you need to install joblib as described in the lecture notes and adjust the comments on the next three lines...
-#from joblib import Parallel, delayed
-#evaluations = Parallel(n_jobs=12)(delayed(ExecuteEvaluationRun)(runSpec, xTrainRaw, yTrain) for runSpec in evaluationRunSpecifications)
+from joblib import Parallel, delayed
+evaluations = Parallel(n_jobs=12)(delayed(ExecuteEvaluationRun)(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications)
 
-evaluations = [ ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain) for runSpec in evaluationRunSpecifications ]
+# evaluations = [ ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain) for runSpec in evaluationRunSpecifications ]
 
+acc, err, rt, mi = [], [], [], []
+accBest, rtBest, best = 0, 9999, []
 for evaluation in evaluations:
     print(evaluation)
-    
+    acc.append(evaluation['accuracy'])
+    err.append(evaluation['accuracy'] - evaluation['lowerBound'])
+    rt.append(evaluation['runtime'])
+    mi.append(evaluation['numMutualInformationWords'])
+    if evaluation['accuracy'] > accBest:
+        accBest = evaluation['accuracy']
+        rtBest = evaluation['runtime']
+        best = evaluation
+    elif evaluation['accuracy'] == accBest:
+        if evaluation['runtime'] < rtBest:
+            accBest = evaluation['accuracy']
+            rtBest = evaluation['runtime']
+            best = evaluation
+Charting.PlotSeriesWithErrorBars([acc], [err], ["accuracy"], mi,
+                                 chartTitle=best['optimizing'] + " - accuracy",
+                                 xAxisTitle=best['optimizing'], yAxisTitle="accuracy",
+                                 yBotLimit=0.8, outputDirectory=kOutputDirectory,
+                                 fileName=best['optimizing'] + " - accuracy")
+Charting.PlotSeries([rt], ['runtime'], mi, chartTitle=best['optimizing'] + " - runtime",
+                    xAxisTitle=best['optimizing'], yAxisTitle="runtime", outputDirectory=kOutputDirectory,
+                    fileName=best['optimizing'] + " - runtime")
+
+
 # Good luck!
